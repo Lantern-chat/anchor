@@ -3,6 +3,7 @@ use std::{fmt, ops::Deref};
 use der::asn1::BitString;
 use ed25519_dalek::{Signature as Ed25519DalekSignature, Signer, SigningKey, VerifyingKey};
 use polyproto::certs::PublicKeyInfo;
+use polyproto::errors::{ConversionError, InvalidInput};
 use polyproto::key::{PrivateKey, PublicKey};
 use polyproto::signature::Signature;
 use rand::{CryptoRng, RngCore};
@@ -83,27 +84,26 @@ impl Signature for Ed25519Signature {
         const {
             AlgorithmIdentifierOwned {
                 // This is the OID for Ed25519. It is defined in the IANA registry.
-                oid: match ObjectIdentifier::new("1.3.101.112") {
-                    Ok(oid) => oid,
-                    Err(_) => panic!("Invalid OID"),
-                },
+                oid: ObjectIdentifier::new_unwrap("1.3.101.112"),
                 // For this example, we don't need or want any parameters.
                 parameters: None,
             }
         }
     }
 
-    fn from_bytes(signature: &[u8]) -> Self {
-        let mut signature_vec = signature.to_vec();
-        signature_vec.resize(64, 0);
-        let signature_array: [u8; 64] = {
-            let mut array = [0; 64];
-            array.copy_from_slice(&signature_vec[..]);
-            array
-        };
-        Self {
-            signature: Ed25519DalekSignature::from_bytes(&signature_array),
-            algorithm: Self::algorithm_identifier(),
+    fn from_bytes(signature: &[u8]) -> Result<Self, ConversionError> {
+        match <&[u8; 64]>::try_from(signature) {
+            Ok(signature_array) => Ok(Self {
+                signature: Ed25519DalekSignature::from_bytes(signature_array),
+                algorithm: Self::algorithm_identifier(),
+            }),
+            Err(_) => Err(ConversionError::InvalidInput(
+                polyproto::errors::InvalidInput::Length {
+                    min_length: 0,
+                    max_length: 32,
+                    actual_length: signature.len(),
+                },
+            )),
         }
     }
 }
@@ -112,6 +112,7 @@ impl PrivateKey<Ed25519Signature> for Ed25519KeyPair {
     type PublicKey = Ed25519PublicKey;
 
     // Return a reference to the public key
+    #[inline(always)]
     fn pubkey(&self) -> &Self::PublicKey {
         self.as_ref()
     }
@@ -134,10 +135,8 @@ impl PublicKey<Ed25519Signature> for Ed25519PublicKey {
         signature: &Ed25519Signature,
         data: &[u8],
     ) -> Result<(), polyproto::errors::composite::PublicKeyError> {
-        match self.verify_strict(data, signature.as_signature()) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(polyproto::errors::composite::PublicKeyError::BadSignature),
-        }
+        self.verify_strict(data, signature.as_signature())
+            .map_err(|_| polyproto::errors::composite::PublicKeyError::BadSignature)
     }
 
     // Returns the public key info. Public key info is used to encode the public key in a
@@ -151,23 +150,19 @@ impl PublicKey<Ed25519Signature> for Ed25519PublicKey {
         }
     }
 
-    fn try_from_public_key_info(
-        public_key_info: PublicKeyInfo,
-    ) -> Result<Self, polyproto::errors::composite::ConversionError> {
+    fn try_from_public_key_info(public_key_info: PublicKeyInfo) -> Result<Self, ConversionError> {
         match <&[u8; 32]>::try_from(public_key_info.public_key_bitstring.raw_bytes()) {
             Ok(sig_array) => match VerifyingKey::from_bytes(sig_array) {
                 Ok(key) => Ok(Self(key)),
-                Err(e) => Err(polyproto::errors::composite::ConversionError::InvalidInput(
+                Err(e) => Err(ConversionError::InvalidInput(
                     polyproto::errors::InvalidInput::Malformed(e.to_string().into()),
                 )),
             },
-            Err(_) => Err(polyproto::errors::composite::ConversionError::InvalidInput(
-                polyproto::errors::InvalidInput::Length {
-                    min_length: 0,
-                    max_length: 32,
-                    actual_length: public_key_info.public_key_bitstring.raw_bytes().len(),
-                },
-            )),
+            Err(_) => Err(ConversionError::InvalidInput(InvalidInput::Length {
+                min_length: 0,
+                max_length: 32,
+                actual_length: public_key_info.public_key_bitstring.raw_bytes().len(),
+            })),
         }
     }
 }
