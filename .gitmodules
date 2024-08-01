@@ -1,0 +1,3 @@
+[submodule "polyproto"]
+	path = polyproto
+	url = https://github.com/Lantern-chat/polyproto

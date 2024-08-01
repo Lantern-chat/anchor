@@ -1,0 +1,21 @@
+[package]
+name = "anchor-sdk"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache 2.0"
+authors = ["Nova <novacrazy@gmail.com>"]
+publish = false
+
+[dependencies]
+polyproto.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Crypto
+ed25519-dalek.workspace = true
+rand.workspace = true
+spki.workspace = true
+x509-cert.workspace = true
+der.workspace = true
+secrets.workspace = true

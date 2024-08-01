@@ -1,0 +1,29 @@
+[package]
+name = "anchor"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+authors = ["Nova <novacrazy@gmail.com>"]
+publish = false
+
+[build-dependencies]
+built.workspace = true
+
+[dependencies]
+axum = { version = "0.7", features = ["http1", "http2", "json"] }
+tokio = { workspace = true, features = ["full"] }
+
+pg_pool = { git = "https://github.com/Lantern-chat/pg_pool" }
+thorn = { git = "https://github.com/Lantern-chat/thorn" }
+
+tracing.workspace = true
+tracing-futures.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
+
+dotenv.workspace = true
+anyhow.workspace = true
+argh.workspace = true
+
+[target.'cfg(all(unix, any(target_arch = "x86", target_arch = "x86_64")))'.dependencies]
+tikv-jemallocator = { version = "0.6" }

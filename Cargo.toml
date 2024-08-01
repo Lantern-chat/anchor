@@ -1,0 +1,53 @@
+[patch.crates-io]
+argh = { git = "https://github.com/novacrazy/argh" }
+
+[workspace]
+resolver = "2"
+members = ["anchor", "anchor-sdk", "polyproto"]
+
+[workspace.dependencies]
+polyproto = { path = "./polyproto" }
+
+parking_lot = "0.12"
+futures = "0.3"
+tokio = { version = "1", features = ["parking_lot"] }
+
+# Logging
+tracing = { version = "0.1", default-features = false, features = ["log", "std"] }
+tracing-futures = { version = "0.2.4", default-features = false, features = ["std-future"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "parking_lot", "registry"] }
+tracing-appender = { version = "0.2", features = ["parking_lot"] }
+
+# General utilities
+argh = { version = "0.1", default-features = false, features = ["help"] }
+dotenv = "0.15.0"
+anyhow = "1"
+thiserror = "1"
+built = { version = "0.7", features = ["chrono"] }
+
+# Crypto
+rand = "0.8.5"
+ed25519-dalek = { version = "2.1.1", features = ["rand_core", "signature"] }
+spki = { version = "0.7.3", features = ["pem"] }
+der = { version = "0.7.9", features = ["pem"] }
+x509-cert = "0.2.5"
+secrets = "1.2.0"
+
+[profile.dev]
+# debug = 1
+opt-level = 1
+lto = 'thin'
+incremental = false
+
+[profile.release]
+opt-level = 3
+lto = 'fat'
+codegen-units = 1
+
+[profile.dev.build-override]
+codegen-units = 1
+opt-level = 3
+
+[profile.dev.package."*"]
+codegen-units = 1
+opt-level = 3
